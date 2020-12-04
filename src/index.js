@@ -5,7 +5,7 @@ const Transaction = require('ethereumjs-tx').Transaction
 const CONSTANT = {
     IFRAME_URL: 'https://mac:3000',
     BASE_HD_PATH: `m/44'/60'/0`,
-    TYPE: 'wallet s1',
+    TYPE: 'WalletS1',
 }
 
 const web3 = new Web3();
@@ -203,3 +203,6 @@ ins.iframe.onload = async () => {
     console.log('ins.accounts:', ins.accounts);
     console.log('getEncryptionPublicKey:', await ins.getEncryptionPublicKey(addr));
 }    
+
+WalletIOKeyring.type = CONSTANT.TYPE;
+module.exports = WalletIOKeyring;
