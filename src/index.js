@@ -6,7 +6,7 @@ const secp256k1 = require('secp256k1');
 const Transaction = require('ethereumjs-tx').Transaction
 const CONSTANT = {
     IFRAME_URL: 'https://mac:3000',
-    HD_PATH: `m/44'/60'/0`,
+    BASE_HD_PATH: `m/44'/60'/0`,
     TYPE: 'wallet s1',
 }
 
@@ -32,7 +32,8 @@ class WalletIOKeyring extends EventEmitter {
     }
 
     async deserialize(opts = {}) {
-        this.accounts = opts.accounts || {}
+        this.accounts = opts.accounts || {};
+        this.currentAccountIndex = opts.currentAccountIndex || 0;
         return Promise.resolve()
     }
 
@@ -55,7 +56,7 @@ class WalletIOKeyring extends EventEmitter {
         let opt = {
             action: 'getMsgSignature',
             payload: {
-                hdPath: CONSTANT.HD_PATH,
+                hdPath: CONSTANT.BASE_HD_PATH,
                 currType: 'ETH',
                 msgHash: hash
             },
@@ -75,7 +76,7 @@ class WalletIOKeyring extends EventEmitter {
         let opt = {
             action: 'getTxSignature',
             payload: {
-                hdPath: CONSTANT.HD_PATH,
+                hdPath: CONSTANT.BASE_HD_PATH,
                 currType: 'ETH',
                 txRaw: tx.serialize().toString('hex')
             },
@@ -105,7 +106,7 @@ class WalletIOKeyring extends EventEmitter {
             for (let index = from; index < this.currentAccountIndex; index++) {
                 let opt = {
                     action: 'getPubKey',
-                    payload: [CONSTANT.HD_PATH, index].join('/'),
+                    payload: [CONSTANT.BASE_HD_PATH, index].join('/'),
                 };
 
                 try {
