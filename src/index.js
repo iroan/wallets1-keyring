@@ -54,6 +54,10 @@ class WalletIOKeyring extends EventEmitter {
         });
     }
 
+    getAccounts() {
+        return Promise.resolve(this.accounts);
+    }
+
     async addAccounts(num = 1) {
         return new Promise(async (resolve) => {
             const from = this.currentAccountIndex;
@@ -98,8 +102,9 @@ class WalletIOKeyring extends EventEmitter {
     }
 }
 
-
 let ins = new WalletIOKeyring();
 ins.iframe.onload = async () => {
+    console.log('addAccounts:', await ins.addAccounts(1));
     console.log('addAccounts:', await ins.addAccounts(3));
+    console.log('getAccounts:', await ins.getAccounts());
 }    
