@@ -54,9 +54,29 @@ class WalletIOKeyring extends EventEmitter {
         });
     }
 
-    signTransaction(address,tx) {
+    signMessage(address, hash) {
         let opt = {
-            action: 'getSignature',
+            action: 'getMsgSignature',
+            payload: {
+                hdPath: CONSTANT.HD_PATH,
+                currType: 'ETH',
+                msgHash: hash
+            },
+        };
+
+        return new Promise((resolve, reject) => {
+            this._sendToIframe(opt, ({ status, payload }) => {
+                if (status === 'ok') {
+                    resolve(payload)
+                }
+                else reject(status);
+            });
+        });
+    }
+
+    signTransaction(address, tx) {
+        let opt = {
+            action: 'getTxSignature',
             payload: {
                 hdPath: CONSTANT.HD_PATH,
                 currType: 'ETH',
@@ -141,5 +161,7 @@ ins.iframe.onload = async () => {
     // console.log('addAccounts:', await ins.addAccounts(1));
     // console.log('addAccounts:', await ins.addAccounts(3));
     // console.log('getAccounts:', await ins.getAccounts());
-    console.log('signTransaction:', await ins.signTransaction('address', new Transaction(txData)));
+    // console.log('signTransaction:', await ins.signTransaction('address', new Transaction(txData)));
+    const hash = web3.utils.keccak256(Buffer.from('hello wkx'));
+    console.log('signMessage:', await ins.signMessage('address', hash));
 }    
