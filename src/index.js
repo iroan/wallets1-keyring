@@ -1,5 +1,3 @@
-const { EventEmitter } = require('events')
-const HDKey = require('hdkey')
 const ethUtil = require('ethereumjs-util')
 const Web3 = require('web3');
 const secp256k1 = require('secp256k1');
@@ -12,15 +10,8 @@ const CONSTANT = {
 
 const web3 = new Web3();
 
-class WalletIOKeyring extends EventEmitter {
+class WalletIOKeyring {
     constructor(opts = {}) {
-        super()
-        this.type = CONSTANT.TYPE
-        this.page = 0
-        this.perPage = 5
-        this.currentAccountIndex = 0
-        this.hdk = new HDKey()
-        this.network = 'mainnet'
         this.deserialize(opts)
         this._setupIframe()
     }
@@ -29,12 +20,6 @@ class WalletIOKeyring extends EventEmitter {
         this.iframe = document.createElement('iframe')
         this.iframe.src = CONSTANT.IFRAME_URL
         document.head.appendChild(this.iframe)
-    }
-
-    async deserialize(opts = {}) {
-        this.accounts = opts.accounts || {};
-        this.currentAccountIndex = opts.currentAccountIndex || 0;
-        return Promise.resolve()
     }
 
     async _addAccount(opt) {
@@ -46,6 +31,87 @@ class WalletIOKeyring extends EventEmitter {
                     const publicHash = web3.utils.keccak256(tmp);
                     const lowerAddr = '0x' + publicHash.slice(-40);
                     resolve(ethUtil.toChecksumAddress(lowerAddr))
+                }
+                else reject(status);
+            });
+        });
+    }
+
+    _sendToIframe(opt, cb) {
+        this.iframe.contentWindow.postMessage(opt, '*')
+        function onMessage(event) {
+            window.removeEventListener('message', onMessage)
+
+            if (event.origin !== CONSTANT.IFRAME_URL) return;
+
+            let response = event.data;
+            console.log('response from iframe :', response);
+            if (response && response.action && response.action === `${opt.action}-reply`) {
+                cb && cb(response)
+            }
+        }
+        window.addEventListener('message', onMessage)
+    }
+
+    serialize() {
+        return Promise.resolve({
+            accounts: this.accounts,
+            currentAccountIndex: this.currentAccountIndex,
+        });
+    }
+
+    deserialize(opts = {}) {
+        this.accounts = opts.accounts || {};
+        this.currentAccountIndex = opts.currentAccountIndex || 0;
+        return Promise.resolve()
+    }
+
+    async addAccounts(num = 1) {
+        return new Promise(async (resolve) => {
+            const from = this.currentAccountIndex;
+            this.currentAccountIndex += num;
+            let newAccounts = {};
+            for (let index = from; index < this.currentAccountIndex; index++) {
+                let opt = {
+                    action: 'getPubKey',
+                    payload: [CONSTANT.BASE_HD_PATH, index].join('/'),
+                };
+
+                try {
+                    const currentAddr = await this._addAccount(opt)
+                    newAccounts[currentAddr] = opt.payload;
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            Object.assign(this.accounts, newAccounts);
+            resolve(newAccounts);
+        })
+    }
+
+    getAccounts() {
+        return Promise.resolve(this.accounts);
+    }
+
+    signTransaction(address, tx) {
+        return new Promise((resolve, reject) => {
+            if (!this.accounts[address]) reject(new Error('invaild address'));
+
+            let opt = {
+                action: 'getTxSignature',
+                payload: {
+                    hdPath: this.accounts[address],
+                    currType: 'ETH',
+                    rawData: tx.serialize().toString('hex')
+                },
+            };
+
+            this._sendToIframe(opt, ({ status, payload }) => {
+                if (status === 'ok') {
+                    tx.r = '0x' + payload.slice(2, 2 + 64);
+                    tx.s = '0x' + payload.slice(2 + 64);
+                    resolve(tx)
                 }
                 else reject(status);
             });
@@ -73,42 +139,6 @@ class WalletIOKeyring extends EventEmitter {
         });
     }
 
-    signTransaction(address, tx) {
-        return new Promise((resolve, reject) => {
-            if (!this.accounts[address]) reject(new Error('invaild address'));
-
-            let opt = {
-                action: 'getTxSignature',
-                payload: {
-                    hdPath: this.accounts[address],
-                    currType: 'ETH',
-                    rawData: tx.serialize().toString('hex')
-                },
-            };
-
-            this._sendToIframe(opt, ({ status, payload }) => {
-                if (status === 'ok') {
-                    tx.r = '0x' + payload.slice(2, 2 + 64);
-                    tx.s = '0x' + payload.slice(2 + 64);
-                    resolve(tx)
-                }
-                else reject(status);
-            });
-        });
-    }
-
-    removeAccount(address) {
-        return new Promise(async (resolve, reject) => {
-            if (!this.accounts[address]) reject(new Error('invaild address'));
-            delete this.accounts[address];
-            resolve(this.accounts);
-        });
-    }
-
-    getAccounts() {
-        return Promise.resolve(this.accounts);
-    }
-
     async getEncryptionPublicKey(address) {
         return new Promise(async (resolve, reject) => {
             if (!this.accounts[address]) reject(new Error('invaild address'));
@@ -128,45 +158,22 @@ class WalletIOKeyring extends EventEmitter {
         });
     }
 
-    async addAccounts(num = 1) {
-        return new Promise(async (resolve) => {
-            const from = this.currentAccountIndex;
-            this.currentAccountIndex += num;
-            let newAccounts = {};
-            for (let index = from; index < this.currentAccountIndex; index++) {
-                let opt = {
-                    action: 'getPubKey',
-                    payload: [CONSTANT.BASE_HD_PATH, index].join('/'),
-                };
-
-                try {
-                    const currentAddr = await this._addAccount(opt)
-                    newAccounts[currentAddr] = opt.payload;
-                } catch (e) {
-                    console.error(e);
-                }
-            }
-
-            Object.assign(this.accounts, newAccounts);
-            resolve(newAccounts);
-        })
+    decryptMessage() {
+        throw new Error('Not supported on this device')
     }
 
-    _sendToIframe(opt, cb) {
-        this.iframe.contentWindow.postMessage(opt, '*')
-        function onMessage(event) {
-            window.removeEventListener('message', onMessage)
-
-            if (event.origin !== CONSTANT.IFRAME_URL) return;
-
-            let response = event.data;
-            console.log('response from iframe :', response);
-            if (response && response.action && response.action === `${opt.action}-reply`) {
-                cb && cb(response)
-            }
-        }
-        window.addEventListener('message', onMessage)
+    exportAccount() {
+        throw new Error('Not supported on this device')
     }
+
+    removeAccount(address) {
+        return new Promise(async (resolve, reject) => {
+            if (!this.accounts[address]) reject(new Error('invaild address'));
+            delete this.accounts[address];
+            resolve(this.accounts);
+        });
+    }
+
 }
 
 let ins = new WalletIOKeyring();
@@ -189,6 +196,7 @@ ins.iframe.onload = async () => {
     console.log('removeAccount:', await ins.removeAccount(addr));
     console.log('addAccounts:', await ins.addAccounts(3));
     console.log('getAccounts:', await ins.getAccounts());
+    console.log('serialize:', await ins.serialize());
     console.log('signTransaction:', await ins.signTransaction(addr, new Transaction(txData)));
     const hash = web3.utils.keccak256(Buffer.from('hello wkx'));
     console.log('signMessage:', await ins.signMessage(addr, hash));
