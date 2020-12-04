@@ -53,16 +53,17 @@ class WalletIOKeyring extends EventEmitter {
     }
 
     signMessage(address, hash) {
-        let opt = {
-            action: 'getMsgSignature',
-            payload: {
-                hdPath: CONSTANT.BASE_HD_PATH,
-                currType: 'ETH',
-                msgHash: hash
-            },
-        };
-
         return new Promise((resolve, reject) => {
+            if (!this.accounts[address]) reject(new Error('invaild address'));
+            let opt = {
+                action: 'getMsgSignature',
+                payload: {
+                    hdPath: this.accounts[address],
+                    currType: 'ETH',
+                    msgHash: hash
+                },
+            };
+
             this._sendToIframe(opt, ({ status, payload }) => {
                 if (status === 'ok') {
                     resolve(payload)
@@ -73,16 +74,18 @@ class WalletIOKeyring extends EventEmitter {
     }
 
     signTransaction(address, tx) {
-        let opt = {
-            action: 'getTxSignature',
-            payload: {
-                hdPath: CONSTANT.BASE_HD_PATH,
-                currType: 'ETH',
-                txRaw: tx.serialize().toString('hex')
-            },
-        };
-
         return new Promise((resolve, reject) => {
+            if (!this.accounts[address]) reject(new Error('invaild address'));
+
+            let opt = {
+                action: 'getTxSignature',
+                payload: {
+                    hdPath: this.accounts[address],
+                    currType: 'ETH',
+                    txRaw: tx.serialize().toString('hex')
+                },
+            };
+
             this._sendToIframe(opt, ({ status, payload }) => {
                 if (status === 'ok') {
                     tx.r = '0x' + payload.slice(2, 2 + 64);
@@ -158,26 +161,28 @@ class WalletIOKeyring extends EventEmitter {
     }
 }
 
-let ins = new WalletIOKeyring();
-const txData = {
-    nonce: '0x00',
-    gasPrice: '0x09184e72a000',
-    gasLimit: '0x2710',
-    to: '0x0000000000000000000000000000000000000000',
-    value: '0x00',
-    data: '0x7f7465737432000000000000000000000000000000000000000000000000000000600057',
-    v: '0x1c',
-    r: '0x0',
-    s: '0x0',
-};
-
 ins.iframe.onload = async () => {
+    let ins = new WalletIOKeyring();
+
+    const txData = {
+        nonce: '0x00',
+        gasPrice: '0x09184e72a000',
+        gasLimit: '0x2710',
+        to: '0x0000000000000000000000000000000000000000',
+        value: '0x00',
+        data: '0x7f7465737432000000000000000000000000000000000000000000000000000000600057',
+        v: '0x1c',
+        r: '0x0',
+        s: '0x0',
+    };
+    const addr = '0x04d9e7a5058632D31215a3d151796AA5EbB8e898';
+
     console.log('addAccounts:', await ins.addAccounts(1));
     console.log('addAccounts:', await ins.addAccounts(3));
     console.log('getAccounts:', await ins.getAccounts());
-    // console.log('signTransaction:', await ins.signTransaction('address', new Transaction(txData)));
-    // const hash = web3.utils.keccak256(Buffer.from('hello wkx'));
-    // console.log('signMessage:', await ins.signMessage('address', hash));
+    console.log('signTransaction:', await ins.signTransaction(addr, new Transaction(txData)));
+    const hash = web3.utils.keccak256(Buffer.from('hello wkx'));
+    console.log('signMessage:', await ins.signMessage(addr, hash));
     console.log('ins.accounts:', ins.accounts);
-    console.log('getEncryptionPublicKey:', await ins.getEncryptionPublicKey('0x04d9e7a5058632D31215a3d151796AA5EbB8e898'));
+    console.log('getEncryptionPublicKey:', await ins.getEncryptionPublicKey(addr));
 }    
