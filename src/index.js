@@ -6,7 +6,7 @@ const secp256k1 = require('secp256k1');
 const Transaction = require('ethereumjs-tx').Transaction
 const CONSTANT = {
     IFRAME_URL: 'https://mac:3000',
-    HD_PATH: `m/44'/60'/0'`,
+    HD_PATH: `m/44'/60'/0`,
     TYPE: 'wallet s1',
 }
 
@@ -32,10 +32,7 @@ class WalletIOKeyring extends EventEmitter {
     }
 
     async deserialize(opts = {}) {
-        this.hdPath = opts.hdPath || CONSTANT.HD_PATH
-        this.accounts = opts.accounts || []
-        this.accountIndexes = opts.accountIndexes || {}
-        this.accounts = this.accounts.filter((account) => Object.keys(this.accountIndexes).includes(ethUtil.toChecksumAddress(account)))
+        this.accounts = opts.accounts || {}
         return Promise.resolve()
     }
 
@@ -103,23 +100,23 @@ class WalletIOKeyring extends EventEmitter {
     async addAccounts(num = 1) {
         return new Promise(async (resolve) => {
             const from = this.currentAccountIndex;
-            const to = this.currentAccountIndex + num;
-            let newAccounts = [];
-            for (let index = from; index < to; index++) {
+            this.currentAccountIndex += num;
+            let newAccounts = {};
+            for (let index = from; index < this.currentAccountIndex; index++) {
                 let opt = {
                     action: 'getPubKey',
-                    payload: this.hdPath,
-                }
+                    payload: [CONSTANT.HD_PATH, index].join('/'),
+                };
 
                 try {
                     const currentAddr = await this._addAccount(opt)
-                    newAccounts.push(currentAddr);
+                    newAccounts[currentAddr] = opt.payload;
                 } catch (e) {
                     console.error(e);
                 }
             }
 
-            this.accounts = this.accounts.concat(newAccounts);
+            Object.assign(this.accounts, newAccounts);
             resolve(newAccounts);
         })
     }
@@ -127,18 +124,15 @@ class WalletIOKeyring extends EventEmitter {
     _sendToIframe(opt, cb) {
         this.iframe.contentWindow.postMessage(opt, '*')
         function onMessage(event) {
+            window.removeEventListener('message', onMessage)
+
+            if (event.origin !== CONSTANT.IFRAME_URL) return;
+
             let response = event.data;
             console.log('response from iframe :', response);
-            if (event.origin !== CONSTANT.IFRAME_URL) {
-                return false
-            }
-
             if (response && response.action && response.action === `${opt.action}-reply`) {
                 cb && cb(response)
-                return undefined
             }
-            window.removeEventListener('message', onMessage)
-            return undefined
         }
         window.addEventListener('message', onMessage)
     }
@@ -158,10 +152,11 @@ const txData = {
 };
 
 ins.iframe.onload = async () => {
-    // console.log('addAccounts:', await ins.addAccounts(1));
-    // console.log('addAccounts:', await ins.addAccounts(3));
-    // console.log('getAccounts:', await ins.getAccounts());
-    // console.log('signTransaction:', await ins.signTransaction('address', new Transaction(txData)));
-    const hash = web3.utils.keccak256(Buffer.from('hello wkx'));
-    console.log('signMessage:', await ins.signMessage('address', hash));
+    console.log('addAccounts:', await ins.addAccounts(1));
+    console.log('addAccounts:', await ins.addAccounts(3));
+    console.log('getAccounts:', await ins.getAccounts());
+    console.log('signTransaction:', await ins.signTransaction('address', new Transaction(txData)));
+    // const hash = web3.utils.keccak256(Buffer.from('hello wkx'));
+    // console.log('signMessage:', await ins.signMessage('address', hash));
+    console.log('ins.accounts:', ins.accounts);
 }    
