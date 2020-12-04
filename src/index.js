@@ -97,6 +97,14 @@ class WalletIOKeyring extends EventEmitter {
         });
     }
 
+    removeAccount(address) {
+        return new Promise(async (resolve, reject) => {
+            if (!this.accounts[address]) reject(new Error('invaild address'));
+            delete this.accounts[address];
+            resolve(this.accounts);
+        });
+    }
+
     getAccounts() {
         return Promise.resolve(this.accounts);
     }
@@ -178,6 +186,7 @@ ins.iframe.onload = async () => {
     const addr = '0x04d9e7a5058632D31215a3d151796AA5EbB8e898';
 
     console.log('addAccounts:', await ins.addAccounts(2));
+    console.log('removeAccount:', await ins.removeAccount(addr));
     console.log('addAccounts:', await ins.addAccounts(3));
     console.log('getAccounts:', await ins.getAccounts());
     console.log('signTransaction:', await ins.signTransaction(addr, new Transaction(txData)));
