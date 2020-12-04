@@ -19,10 +19,13 @@ class WalletIOKeyring {
     _setupIframe() {
         this.iframe = document.createElement('iframe')
         this.iframe.src = CONSTANT.IFRAME_URL
+        this.iframe.onload = () => {
+            this.iframeLoaded = true;
+        };
         document.head.appendChild(this.iframe)
     }
 
-    async _addAccount(opt) {
+    _addAccount(opt) {
         return new Promise((resolve, reject) => {
             this._sendToIframe(opt, ({ status, payload }) => {
                 if (status === 'ok') {
@@ -38,6 +41,19 @@ class WalletIOKeyring {
     }
 
     _sendToIframe(opt, cb) {
+        if (this.iframeLoaded === false) {
+            if (this.iframeLoadTimeOutCnt > 10) {
+                this.iframeLoadTimeOutCnt = 0;
+                return;
+            }
+            setTimeout(() => {
+                this._sendToIframe(opt, cb);
+                this.iframeLoadTimeOutCnt++;
+            }, 1000);
+
+            return;
+        }
+
         this.iframe.contentWindow.postMessage(opt, '*')
         function onMessage(event) {
             window.removeEventListener('message', onMessage)
@@ -63,6 +79,8 @@ class WalletIOKeyring {
     deserialize(opts = {}) {
         this.accounts = opts.accounts || {};
         this.currentAccountIndex = opts.currentAccountIndex || 0;
+        this.iframeLoaded = false;
+        this.iframeLoadTimeOutCnt = 0;
         return Promise.resolve()
     }
 
@@ -176,9 +194,8 @@ class WalletIOKeyring {
 
 }
 
-let ins = new WalletIOKeyring();
-ins.iframe.onload = async () => {
-
+async function main() {
+    let ins = new WalletIOKeyring();
     const txData = {
         nonce: '0x00',
         gasPrice: '0x09184e72a000',
@@ -202,7 +219,9 @@ ins.iframe.onload = async () => {
     console.log('signMessage:', await ins.signMessage(addr, hash));
     console.log('ins.accounts:', ins.accounts);
     console.log('getEncryptionPublicKey:', await ins.getEncryptionPublicKey(addr));
-}    
+};
+
+main();
 
 WalletIOKeyring.type = CONSTANT.TYPE;
 module.exports = WalletIOKeyring;
