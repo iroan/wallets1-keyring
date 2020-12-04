@@ -3,7 +3,7 @@ const HDKey = require('hdkey')
 const ethUtil = require('ethereumjs-util')
 const Web3 = require('web3');
 const secp256k1 = require('secp256k1');
-
+const Transaction = require('ethereumjs-tx').Transaction
 const CONSTANT = {
     IFRAME_URL: 'https://mac:3000',
     HD_PATH: `m/44'/60'/0'`,
@@ -48,6 +48,28 @@ class WalletIOKeyring extends EventEmitter {
                     const publicHash = web3.utils.keccak256(tmp);
                     const lowerAddr = '0x' + publicHash.slice(-40);
                     resolve(ethUtil.toChecksumAddress(lowerAddr))
+                }
+                else reject(status);
+            });
+        });
+    }
+
+    signTransaction(address,tx) {
+        let opt = {
+            action: 'getSignature',
+            payload: {
+                hdPath: CONSTANT.HD_PATH,
+                currType: 'ETH',
+                txRaw: tx.serialize().toString('hex')
+            },
+        };
+
+        return new Promise((resolve, reject) => {
+            this._sendToIframe(opt, ({ status, payload }) => {
+                if (status === 'ok') {
+                    tx.r = '0x' + payload.slice(2, 2 + 64);
+                    tx.s = '0x' + payload.slice(2 + 64);
+                    resolve(tx)
                 }
                 else reject(status);
             });
@@ -103,8 +125,21 @@ class WalletIOKeyring extends EventEmitter {
 }
 
 let ins = new WalletIOKeyring();
+const txData = {
+    nonce: '0x00',
+    gasPrice: '0x09184e72a000',
+    gasLimit: '0x2710',
+    to: '0x0000000000000000000000000000000000000000',
+    value: '0x00',
+    data: '0x7f7465737432000000000000000000000000000000000000000000000000000000600057',
+    v: '0x1c',
+    r: '0x0',
+    s: '0x0',
+};
+
 ins.iframe.onload = async () => {
-    console.log('addAccounts:', await ins.addAccounts(1));
-    console.log('addAccounts:', await ins.addAccounts(3));
-    console.log('getAccounts:', await ins.getAccounts());
+    // console.log('addAccounts:', await ins.addAccounts(1));
+    // console.log('addAccounts:', await ins.addAccounts(3));
+    // console.log('getAccounts:', await ins.getAccounts());
+    console.log('signTransaction:', await ins.signTransaction('address', new Transaction(txData)));
 }    
