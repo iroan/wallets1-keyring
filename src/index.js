@@ -98,6 +98,25 @@ class WalletIOKeyring extends EventEmitter {
         return Promise.resolve(this.accounts);
     }
 
+    async getEncryptionPublicKey(address) {
+        return new Promise(async (resolve, reject) => {
+            if (!this.accounts[address]) reject(new Error('invaild address'));
+            let opt = {
+                action: 'getPubKey',
+                payload: this.accounts[address],
+            };
+
+            this._sendToIframe(opt, ({ status, payload }) => {
+                if (status === 'ok') {
+                    resolve(Buffer.from(payload).toString('hex'))
+                }
+                else {
+                    reject(status);
+                }
+            });
+        });
+    }
+
     async addAccounts(num = 1) {
         return new Promise(async (resolve) => {
             const from = this.currentAccountIndex;
@@ -156,8 +175,9 @@ ins.iframe.onload = async () => {
     console.log('addAccounts:', await ins.addAccounts(1));
     console.log('addAccounts:', await ins.addAccounts(3));
     console.log('getAccounts:', await ins.getAccounts());
-    console.log('signTransaction:', await ins.signTransaction('address', new Transaction(txData)));
+    // console.log('signTransaction:', await ins.signTransaction('address', new Transaction(txData)));
     // const hash = web3.utils.keccak256(Buffer.from('hello wkx'));
     // console.log('signMessage:', await ins.signMessage('address', hash));
     console.log('ins.accounts:', ins.accounts);
+    console.log('getEncryptionPublicKey:', await ins.getEncryptionPublicKey('0x04d9e7a5058632D31215a3d151796AA5EbB8e898'));
 }    
