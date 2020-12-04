@@ -60,7 +60,7 @@ class WalletIOKeyring extends EventEmitter {
                 payload: {
                     hdPath: this.accounts[address],
                     currType: 'ETH',
-                    msgHash: hash
+                    rawData: hash
                 },
             };
 
@@ -82,7 +82,7 @@ class WalletIOKeyring extends EventEmitter {
                 payload: {
                     hdPath: this.accounts[address],
                     currType: 'ETH',
-                    txRaw: tx.serialize().toString('hex')
+                    rawData: tx.serialize().toString('hex')
                 },
             };
 
@@ -161,8 +161,8 @@ class WalletIOKeyring extends EventEmitter {
     }
 }
 
+let ins = new WalletIOKeyring();
 ins.iframe.onload = async () => {
-    let ins = new WalletIOKeyring();
 
     const txData = {
         nonce: '0x00',
@@ -177,7 +177,7 @@ ins.iframe.onload = async () => {
     };
     const addr = '0x04d9e7a5058632D31215a3d151796AA5EbB8e898';
 
-    console.log('addAccounts:', await ins.addAccounts(1));
+    console.log('addAccounts:', await ins.addAccounts(2));
     console.log('addAccounts:', await ins.addAccounts(3));
     console.log('getAccounts:', await ins.getAccounts());
     console.log('signTransaction:', await ins.signTransaction(addr, new Transaction(txData)));
