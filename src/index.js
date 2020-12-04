@@ -3,7 +3,7 @@ const HDKey = require('hdkey')
 const ethUtil = require('ethereumjs-util')
 
 const CONSTANT = {
-    IFRAME_URL: 'https://mac:3000/',
+    IFRAME_URL: 'https://mac:3000',
     HD_PATH: `m/44'/60'/0'`,
     TYPE: 'wallet s1',
 }
@@ -18,16 +18,13 @@ class WalletIOKeyring extends EventEmitter {
         this.hdk = new HDKey()
         this.network = 'mainnet'
         this.deserialize(opts)
+        this._setupIframe()
     }
 
-    async setupIframe() {
+    _setupIframe() {
         this.iframe = document.createElement('iframe')
         this.iframe.src = CONSTANT.IFRAME_URL
-        
-        this.iframe.onload = () => {
-            this.addAccounts();
-        }
-        document.body.appendChild(this.iframe)
+        document.head.appendChild(this.iframe)
     }
 
     deserialize(opts = {}) {
@@ -39,36 +36,28 @@ class WalletIOKeyring extends EventEmitter {
         return Promise.resolve()
     }
 
-    async addAccounts(num = 1) {
-        console.log('this.iframe:', this.iframe);
-
+    addAccounts(num = 1) {
         for (let index = 0; index < num; index++) {
             let opt = {
-                method: 'getAccount111',
+                method: 'getAccount',
                 params: this.hdPath,
             }
 
             this.iframe.contentWindow.postMessage(opt, '*')
         }
     }
-
 }
 
-function receiveMessage(event) {
-    console.log('from iframe:', event);
+function onMessage(event) {
     if (event.origin !== CONSTANT.IFRAME_URL) {
         return false
     }
+    console.log('from iframe:', event);
 }
 
-async function main() {
-    let ins = new WalletIOKeyring();
-    await ins.setupIframe();
-    // const acc = await ins.addAccounts();
-    // console.log('acc:', acc);
-}
+window.addEventListener('message', onMessage)
 
-window.onload = function () {
-    window.addEventListener('message', receiveMessage)
-    main();
-}
+let ins = new WalletIOKeyring();
+ins.iframe.onload = () => {
+    ins.addAccounts();
+}    
