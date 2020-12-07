@@ -1,7 +1,7 @@
 const ethUtil = require('ethereumjs-util')
 const Web3 = require('web3');
 const secp256k1 = require('secp256k1');
-const Transaction = require('ethereumjs-tx').Transaction
+
 const CONSTANT = {
     IFRAME_URL: 'https://mac:3000',
     BASE_HD_PATH: `m/44'/60'/0`,
