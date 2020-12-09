@@ -4,7 +4,7 @@ const secp256k1 = require('secp256k1');
 
 const CONSTANT = {
     IFRAME_URL: 'https://mac:3000',
-    BASE_HD_PATH: `m/44'/60'/0'`,
+    BASE_HD_PATH: `m/44'/60'/0'/0`,
     TYPE: 'WalletS1',
 }
 
