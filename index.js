@@ -4,7 +4,7 @@ const secp256k1 = require('secp256k1');
 
 const CONSTANT = {
     IFRAME_URL: 'https://mac:3000',
-    BASE_HD_PATH: `m/44'/60'/0`,
+    BASE_HD_PATH: `m/44'/60'/0'`,
     TYPE: 'WalletS1',
 }
 
@@ -29,11 +29,12 @@ class WalletIOKeyring {
         return new Promise((resolve, reject) => {
             this._sendToIframe(opt, ({ status, payload }) => {
                 if (status === 'ok') {
-                    const uncompressedPubKey = secp256k1.publicKeyConvert(payload, false).toString('hex');
-                    const tmp = '0x' + uncompressedPubKey.slice(2);
+                    const uncompressedPubKey = secp256k1.publicKeyConvert(payload, false);
+                    const str = Buffer.from(uncompressedPubKey).toString('hex');
+                    const tmp = '0x' + str.slice(2);
                     const publicHash = web3.utils.keccak256(tmp);
                     const lowerAddr = '0x' + publicHash.slice(-40);
-                    resolve(ethUtil.toChecksumAddress(lowerAddr))
+                    resolve(ethUtil.toChecksumAddress(lowerAddr));
                 }
                 else reject(status);
             });
